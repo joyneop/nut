@@ -239,6 +239,9 @@
 		);
 	};
 
+	document.getElementById('userinputtext').addEventListener('click', function () {
+			document.getElementById('userinputtext').value = document.getElementById('userinputtext').value;
+	});
 	document.getElementById('userinputtext').addEventListener('input', function () {
 		localStorage[localStorageKeyForInput] = document.getElementById('userinputtext').value;
 	});
@@ -250,15 +253,12 @@
 		setTimeout(function () {
 			document.getElementById('ta-encoded').select();
 			document.getElementById('ta-encoded').setSelectionRange(0, 99999);
-			console.log('Selection!');
 		}, 10);
 	};
 
 	document.getElementById('ta-encoded').addEventListener('focus', taEncodedFocusEventHandler);
 	document.getElementById('ta-encoded').addEventListener('click', taEncodedFocusEventHandler);
 
-	var atob_ = function (arg) { return arg; };
-	var btoa_ = function (arg) { return arg; };
 	var atob_ = function (arg) {
 		return decodeURIComponent(atob(arg).split('').map(function(c) {
 	        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
@@ -271,8 +271,8 @@
             return String.fromCharCode('0x' + p1);
 	    }));
 	};
-	// var atob_ = atob;
-	// var btoa_ = btoa;
+	var atob_ = function (arg) { return arg; };
+	var btoa_ = function (arg) { return arg; };
 
 	document.getElementById('btn-encrypt').addEventListener('click', function () {
 		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n';
