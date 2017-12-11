@@ -161,9 +161,6 @@
 	<script>
 	var localStorageKeyForInput = 'NaiveCryptography_20171211-0001-0001-0001';
 	var localStorageKeyForPasscode = 'NaiveCryptography_20171211-0001-0001-0002';
-	function focus () {
-		document.getElementById('userinputtext').focus();
-	};
 	</script>
 </head>
 <body>
@@ -175,7 +172,9 @@
 			<textarea id="userinputtext" autofocus></textarea>
 			<script>
 			try {
-				document.getElementById('userinputtext').value = localStorage[localStorageKeyForInput];
+				if (localStorage[localStorageKeyForInput]) {
+					document.getElementById('userinputtext').value = localStorage[localStorageKeyForInput];
+				}
 			} catch (e) {
 
 			} finally {
@@ -188,7 +187,9 @@
 			<input type="number" id="userinputkey" placeholder="Use Positive Integer Numbers Only" value="114"></input>
 			<script>
 			try {
-				document.getElementById('userinputkey').value = Number(localStorage[localStorageKeyForPasscode]);
+				if (localStorage[localStorageKeyForPasscode]) {
+					document.getElementById('userinputkey').value = Number(localStorage[localStorageKeyForPasscode]);
+				}
 			} catch (e) {
 
 			} finally {
