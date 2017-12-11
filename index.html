@@ -17,7 +17,8 @@
 	}
 	@media screen and (max-width: 767px) {
 		.desktop-only {
-			display: none;
+			/*display: none;*/
+			visibility: hidden;
 		}
 		._desktop-linecompact {
 			display: block;
@@ -248,6 +249,8 @@
 	var taEncodedFocusEventHandler = function () {
 		setTimeout(function () {
 			document.getElementById('ta-encoded').select();
+			document.getElementById('ta-encoded').setSelectionRange(0, 99999);
+			console.log('Selection!');
 		}, 10);
 	};
 
