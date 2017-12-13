@@ -17,7 +17,6 @@
 	}
 	@media screen and (max-width: 767px) {
 		.desktop-only {
-			/*display: none;*/
 			visibility: hidden;
 		}
 		._desktop-linecompact {
@@ -75,7 +74,7 @@
 		opacity: 0.8;
 		margin: 0.8rem 0;
 	}
-	input, textarea {
+	input[type="number"], textarea {
 		font-family: 'Source Code Pro', 'Menlo', 'Consolas', 'Monaco', Seravek, 'Open Sans', 'Helvetica Neue', Helvetica, 'Lucida Grande', Arial, 'Arial-Black', 'Arial Black', 'Hiragino Sans GB', 'Heiti SC', 'Microsoft YaHei', sans-serif;
 		font-size: 18px;
 		font-weight: 400;
@@ -94,24 +93,37 @@
 
 		resize: none;
 	}
-	input:focus, textarea:focus {
+	input[type="number"]:focus, textarea:focus {
 		box-shadow: rgba(0, 0, 0, 0.1) 0 3px 20px 1px;
 	}
-	input {
+	input[type="number"] {
 	}
 	textarea {
-		height: 20vh;
+		height: 14vh;
 	}
 	@media screen and (max-height: 500px) {
 		textarea {
 			height: 6rem;
 		}
 	}
+	#useroptions-container {
+
+	}
+	#useroptions-container label {
+		display: inline-block;
+		margin-right: 15px;
+	}
+	#useroptions-container * {
+		font-weight: 400;
+		color: #666;
+	}
 	#useractions-container {
-		height: 40px;
+		height: 80px;
+		padding: 15px 0;
 	}
 	#useractions-container > button {
 		font-size: 16px;
+		line-height: 20px;
 		text-align: center;
 		color: #FFF;
 		background: #09D;
@@ -162,6 +174,8 @@
 	<script>
 	var localStorageKeyForInput = 'NaiveCryptography_20171211-0001-0001-0001';
 	var localStorageKeyForPasscode = 'NaiveCryptography_20171211-0001-0001-0002';
+	var localStorageKeyForBase64 = 'NaiveCryptography_20171211-0001-0001-0005';
+	var localStorageKeyForShifting = 'NaiveCryptography_20171211-0001-0001-0006';
 	</script>
 </head>
 <body>
@@ -185,7 +199,7 @@
 		</div>
 		<div class="content" id="userinputkey-container">
 			<h2><label for="userinputkey">Encryption Key</label></h2>
-			<input type="number" id="userinputkey" placeholder="Use Positive Integer Numbers Only" value="114514"></input>
+			<input type="number" id="userinputkey" placeholder="Positive Integers Only. 6+ Digits." value="114514"></input>
 			<script>
 			try {
 				if (localStorage[localStorageKeyForPasscode]) {
@@ -197,6 +211,31 @@
 
 			}
 			</script>
+		</div>
+		<div class="content" id="useroptions-container">
+			<h2>Options</h2>
+			<div>
+				<label><input type="checkbox" id="useroption-base64"> Base64</label>
+				<script>
+				try {
+					document.getElementById('useroption-base64').checked = localStorage[localStorageKeyForBase64] === 'false' ? false : true;
+				} catch (e) {
+
+				} finally {
+
+				}
+				</script>
+				<label><input type="checkbox" id="useroption-shifting"> Shifting</label>
+				<script>
+				try {
+					document.getElementById('useroption-shifting').checked = localStorage[localStorageKeyForShifting] === 'false' ? false : true;
+				} catch (e) {
+
+				} finally {
+
+				}
+				</script>
+			</div>
 		</div>
 		<div class="content" id="useractions-container">
 			<button type="button" id="btn-encrypt">Encrypt</button>
@@ -213,27 +252,73 @@
 		</footer>
 	</div>
 	<script>
-	var crypt = function (text, key, keyNumSign) {
+	var binSeqMultiplication = function (keyBinarySequence) {
+		var kbsl = keyBinarySequence.length;
+
+		var totalDimensions_ = 3;
+		if (kbsl >= 1024) {
+			totalDimensions_ = 1;
+		};
+		if (kbsl >= 36) {
+			totalDimensions_ = 2;
+		};
+		if (kbsl <= 6) {
+			totalDimensions_ = 4;
+		};
+		if (kbsl <= 4) {
+			totalDimensions_ = 5;
+		};
+		if (kbsl <= 3) {
+			totalDimensions_ = 6;
+		};
+
+		var arr_ = (new Array(Math.pow(keyBinarySequence.length, totalDimensions_))).fill(1);
+		var result = arr_.map(function (v_, targetIndex_) {
+			var remainingOranges = targetIndex_;
+			var pointCoordinates_ = (new Array(totalDimensions_)).fill(1);
+			for (var i = 0; i < totalDimensions_; i++) {
+				pointCoordinates_[i] = remainingOranges % Math.pow(kbsl, i + 1);
+				remainingOranges -= pointCoordinates_[i];
+			};
+			return pointCoordinates_.map(function (vv_) {
+				return keyBinarySequence[vv_];
+			}).reduce(function (alpha, beta) {
+				return alpha ^ beta;
+			});
+		}).reverse();
+		console.log(result);
+		return result;
+	};
+
+	var crypt = function (text, key, keyNumSign, isShiftingEnabled) {
 		if (typeof(key) !== 'number' || isNaN(Number(key)) || key < 0) {
 			key = 114514;
 			alert('Invalid Key. Using Default Key 114514.')
 		}
-		// key = key * keyNumSign;
-		// console.log(key);
+		var processedKey = binSeqMultiplication( key.toString(2).split('').reverse() );
+		var keyLength = Math.ceil( Math.log2(key) );
 	    return String.fromCharCode.apply(
 			null,
 			text.split('').map(
-				function (v) {
+				function (v, index) {
 					var vcc = v.charCodeAt(0);
-					var tmp1 = vcc ^ parseInt (
-						key.toString(2).split('').reverse().slice(
+					var tmpCharCode = vcc ^ parseInt(
+						processedKey.slice(
 							0,
 							Math.floor( Math.log2(vcc) ) - 1
 						).reverse().join(''),
 						2
 					);
-					console.log(tmp1);
-					return tmp1;
+					if (isShiftingEnabled) {
+						tmpCharCode = tmpCharCode ^ parseInt(
+							processedKey.concat(processedKey).slice(
+								(key + index) % processedKey.length,
+								(key + index) % processedKey.length + Math.floor( Math.log2(vcc) ) - 1
+							).reverse().join(''),
+							2
+						);
+					};
+					return tmpCharCode;
 				}
 			)
 		);
@@ -248,6 +333,12 @@
 	document.getElementById('userinputkey').addEventListener('input', function () {
 		localStorage[localStorageKeyForPasscode] = document.getElementById('userinputkey').value;
 	});
+	document.getElementById('useroption-base64').addEventListener('change', function () {
+		localStorage[localStorageKeyForBase64] = document.getElementById('useroption-base64').checked;
+	});
+	document.getElementById('useroption-shifting').addEventListener('change', function () {
+		localStorage[localStorageKeyForShifting] = document.getElementById('useroption-shifting').checked;
+	});
 
 	var taEncodedFocusEventHandler = function () {
 		setTimeout(function () {
@@ -259,30 +350,35 @@
 	document.getElementById('ta-encoded').addEventListener('focus', taEncodedFocusEventHandler);
 	document.getElementById('ta-encoded').addEventListener('click', taEncodedFocusEventHandler);
 
-	var atob_ = function (arg) {
+	var atob_GLOBAL_ = function (arg) {
 		return decodeURIComponent(atob(arg).split('').map(function(c) {
 	        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
 	    }).join(''));
 	};
-	var btoa_ = function (arg) {
+	var btoa_GLOBAL_ = function (arg) {
 		return btoa(
 			encodeURIComponent(arg).replace(/%([0-9A-F]{2})/g,
 	        function toSolidBytes(match, p1) {
             return String.fromCharCode('0x' + p1);
 	    }));
 	};
-	var atob_ = function (arg) { return arg; };
-	var btoa_ = function (arg) { return arg; };
+	var atob_GLOBAL_DOING_NOTHING_ = function (arg) { return arg; };
+	var btoa_GLOBAL_DOING_NOTHING_ = function (arg) { return arg; };
 
 	document.getElementById('btn-encrypt').addEventListener('click', function () {
-		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n';
-		var tmp = prefix + btoa_(crypt(document.getElementById('userinputtext').value, Math.abs(document.getElementById('userinputkey').value), 1))
+		var btoa_ = document.getElementById('useroption-base64').checked ? btoa_GLOBAL_ : btoa_GLOBAL_DOING_NOTHING_;
+
+		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n==== <Base64> __BASE64__ | <Shifting> __SHIFTING__ ====\n'.replace('__BASE64__', document.getElementById('useroption-base64').checked ? 'ON' : 'OFF').replace('__SHIFTING__', document.getElementById('useroption-shifting').checked ? 'ON' : 'OFF');
+		var tmp = prefix + btoa_(crypt(document.getElementById('userinputtext').value, Math.abs(document.getElementById('userinputkey').value), 1, document.getElementById('useroption-shifting').checked))
 		document.getElementById('ta-encoded').value = tmp;
 	});
 	document.getElementById('btn-decrypt').addEventListener('click', function () {
-		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n';
+		var atob_ = document.getElementById('useroption-base64').checked ? atob_GLOBAL_ : atob_GLOBAL_DOING_NOTHING_;
+
+		var prefix = /^====(.|[=\n])*====\n/;
 		var tmp = document.getElementById('userinputtext').value.trim().replace(prefix, '').trim();
-		tmp = crypt(atob_(tmp), Math.abs(document.getElementById('userinputkey').value), -1);
+		console.log(tmp);
+		tmp = crypt(atob_(tmp), Math.abs(document.getElementById('userinputkey').value), -1, document.getElementById('useroption-shifting').checked);
 		document.getElementById('ta-encoded').value = tmp;
 	});
 	</script>
