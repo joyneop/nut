@@ -210,7 +210,7 @@
 			}
 			</script>
 		</div>
-		<div class="content" id="useroptions-container">
+		<!-- <div class="content" id="useroptions-container">
 			<h2>Options</h2>
 			<div>
 				<label><input type="checkbox" id="useroption-base64"> Base64</label>
@@ -234,7 +234,7 @@
 				}
 				</script>
 			</div>
-		</div>
+		</div> -->
 		<div class="content" id="useractions-container">
 			<button type="button" id="btn-encrypt">Encrypt</button>
 			<button type="button" id="btn-decrypt">Decrypt</button>
@@ -245,7 +245,7 @@
 		</div>
 		<footer class="desktop-only">
 			<div class="_desktop-linecompact">
-				<a href="//joyneop.xyz/">Created by <strong>Joy Neop (a.k.a. Neruthes)</strong>.</a>
+				<a href="//joyneop.xyz/">Created by <strong>Neruthes (a.k.a. Joy Neop)</strong>.</a>
 			</div>
 		</footer>
 	</div>
@@ -284,42 +284,66 @@
 				return alpha ^ beta;
 			});
 		}).reverse();
-		console.log(result);
 		return result;
 	};
 
-	var crypt = function (text, key, keyNumSign, isShiftingEnabled) {
+	var base64char_toNumber = function (str) {
+		if (str.match(/[A-Z]/)) {
+			return str.charCodeAt(0)-65;
+		} else if (str.match(/[a-z]/)) {
+			return str.charCodeAt(0)-97+26;
+		} else if (str.match(/\d/)) {
+			return str.charCodeAt(0)-48+52;
+		} else if (str === '/') {
+			return 62;
+		} else if (str === '+') {
+			return 63
+		}
+	};
+
+	var base64num_toChar = function (num) {
+		if (num < 26) {
+			return String.fromCharCode(num+65);
+		} else if (num < 52) {
+			return String.fromCharCode(num-26+97);
+		} else if (num < 62) {
+			return String.fromCharCode(num-52+48);
+		} else if (num === 62) {
+			return '/';
+		} else {
+			return '+';
+		}
+	};
+
+	var encrypt = function (text, key, keyNumSign) {
+		if (typeof(key) !== 'number' || isNaN(Number(key)) || key < 0) {
+			key = 114514;
+			alert('Invalid Key. Using Default Key 114514.')
+		}
+		var processedKey = binSeqMultiplication( key.toString(2).split('').reverse() );
+		var keyLength = processedKey.length-10;
+
+		// encodeURIComponent then B2A then XOR
+		var result = btoa(encodeURIComponent(text)).replace(/\=/g, '').split('').map(function (char, i) {
+			return base64num_toChar( base64char_toNumber(char) ^ (i%32) ^ parseInt(processedKey.slice(i%keyLength, i%keyLength+5).join(''), 2) );
+		}).join('');
+		return result;
+	};
+
+	var decrypt = function (text, key, keyNumSign) {
 		if (typeof(key) !== 'number' || isNaN(Number(key)) || key < 0) {
 			key = 114514;
 			alert('Invalid Key. Using Default Key 114514.')
 		}
 		var processedKey = binSeqMultiplication( key.toString(2).split('').reverse() );
 		var keyLength = Math.ceil( Math.log2(key) );
-	    return String.fromCharCode.apply(
-			null,
-			text.split('').map(
-				function (v, index) {
-					var vcc = v.charCodeAt(0);
-					var tmpCharCode = vcc ^ parseInt(
-						processedKey.slice(
-							0,
-							Math.floor( Math.log2(vcc) ) - 1
-						).reverse().join(''),
-						2
-					);
-					if (isShiftingEnabled) {
-						tmpCharCode = tmpCharCode ^ parseInt(
-							processedKey.concat(processedKey).slice(
-								(key + index) % processedKey.length,
-								(key + index) % processedKey.length + Math.floor( Math.log2(vcc) ) - 1
-							).reverse().join(''),
-							2
-						);
-					};
-					return tmpCharCode;
-				}
-			)
-		);
+
+		// XOR then A2B then decodeURIComponent
+		var result = text.replace(/\=/g, '').split('').map(function (char, i) {
+			return base64num_toChar( base64char_toNumber(char) ^ (i%32) ^ parseInt(processedKey.slice(i%keyLength, i%keyLength+5).join(''), 2) );
+		}).join('');
+		result = decodeURIComponent(atob(result));
+		return result;
 	};
 
 	document.getElementById('userinputtext').addEventListener('click', function () {
@@ -331,12 +355,12 @@
 	document.getElementById('userinputkey').addEventListener('input', function () {
 		localStorage[localStorageKeyForPasscode] = document.getElementById('userinputkey').value;
 	});
-	document.getElementById('useroption-base64').addEventListener('change', function () {
-		localStorage[localStorageKeyForBase64] = document.getElementById('useroption-base64').checked;
-	});
-	document.getElementById('useroption-shifting').addEventListener('change', function () {
-		localStorage[localStorageKeyForShifting] = document.getElementById('useroption-shifting').checked;
-	});
+	// document.getElementById('useroption-base64').addEventListener('change', function () {
+	// 	localStorage[localStorageKeyForBase64] = document.getElementById('useroption-base64').checked;
+	// });
+	// document.getElementById('useroption-shifting').addEventListener('change', function () {
+	// 	localStorage[localStorageKeyForShifting] = document.getElementById('useroption-shifting').checked;
+	// });
 
 	var taEncodedFocusEventHandler = function () {
 		setTimeout(function () {
@@ -349,34 +373,35 @@
 	document.getElementById('ta-encoded').addEventListener('click', taEncodedFocusEventHandler);
 
 	var atob_GLOBAL_ = function (arg) {
-		return decodeURIComponent(atob(arg).split('').map(function(c) {
+		return atob(arg).split('').map(function(c) {
 	        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-	    }).join(''));
+	    }).join('');
 	};
 	var btoa_GLOBAL_ = function (arg) {
-		return btoa(
-			encodeURIComponent(arg).replace(/%([0-9A-F]{2})/g,
-	        function toSolidBytes(match, p1) {
-            return String.fromCharCode('0x' + p1);
-	    }));
+		console.log(arg);
+		// return btoa(
+		// 	arg.replace(
+		// 		/%([0-9A-F]{2})/g,
+		//         function (match, p1) {
+		//             return String.fromCharCode('0x' + p1);
+		// 	    }
+		// 	)
+		// );
+		return btoa(arg);
 	};
 	var atob_GLOBAL_DOING_NOTHING_ = function (arg) { return arg; };
 	var btoa_GLOBAL_DOING_NOTHING_ = function (arg) { return arg; };
 
 	document.getElementById('btn-encrypt').addEventListener('click', function () {
-		var btoa_ = document.getElementById('useroption-base64').checked ? btoa_GLOBAL_ : btoa_GLOBAL_DOING_NOTHING_;
-
-		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n==== <Base64> __BASE64__ | <Shifting> __SHIFTING__ ====\n'.replace('__BASE64__', document.getElementById('useroption-base64').checked ? 'ON' : 'OFF').replace('__SHIFTING__', document.getElementById('useroption-shifting').checked ? 'ON' : 'OFF');
-		var tmp = prefix + btoa_(crypt(document.getElementById('userinputtext').value, Math.abs(document.getElementById('userinputkey').value), 1, document.getElementById('useroption-shifting').checked))
+		var prefix = '==== Encrypted with https://joyneop.xyz/nut/ ====\n';
+		var tmp = prefix + encrypt(document.getElementById('userinputtext').value, Math.abs(document.getElementById('userinputkey').value));
 		document.getElementById('ta-encoded').value = tmp;
 	});
 	document.getElementById('btn-decrypt').addEventListener('click', function () {
-		var atob_ = document.getElementById('useroption-base64').checked ? atob_GLOBAL_ : atob_GLOBAL_DOING_NOTHING_;
-
 		var prefix = /^====(.|[=\n])*====\n/;
 		var tmp = document.getElementById('userinputtext').value.trim().replace(prefix, '').trim();
 		console.log(tmp);
-		tmp = crypt(atob_(tmp), Math.abs(document.getElementById('userinputkey').value), -1, document.getElementById('useroption-shifting').checked);
+		tmp = decrypt(tmp, Math.abs(document.getElementById('userinputkey').value));
 		document.getElementById('ta-encoded').value = tmp;
 	});
 	</script>
